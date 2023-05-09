@@ -1,0 +1,30 @@
+{
+  "name": "dom-inline-style-filter",
+  "version": "1.0.0",
+  "description": "High-pass data compression filter for inline styling (embedded CSS) by computed effect.",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "rollup --config ./rollup.config.js",
+    "test": "eslint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zm-cttae/dom-inline-style-filter.git"
+  },
+  "keywords": [
+    "dom"
+  ],
+  "author": "zm-cttae",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zm-cttae/dom-inline-style-filter/issues"
+  },
+  "homepage": "https://github.com/zm-cttae/dom-inline-style-filter#readme",
+  "devDependencies": {
+    "@lopatnov/rollup-plugin-uglify": "^2.1.5",
+    "eslint": "^8.40.0",
+    "rollup": "^3.21.5",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "terser": "^5.17.1"
+  }
+}
