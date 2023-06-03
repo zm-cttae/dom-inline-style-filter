@@ -1,5 +1,9 @@
 # `dom-inline-style-filter`
 
+<p align="center"><img src="./icon.png" height="128" /></p>
+
+<p align="center"><a href="https://github.com/zm-cttae/dom-inline-style-filter" target="_blank"><img src="https://img.shields.io/github/v/release/zm-cttae/dom-inline-style-filter.svg?style=flat-square&label=Release&logo=github&logoColor=cacde2&labelColor=2c2c32&color=2196f3" /></a> <a href="https://www.npmjs.com/package/dom-inline-style-filter" target="_blank"><img src="https://img.shields.io/npm/dw/dom-inline-style-filter?style=flat-square&label=Downloads&logo=npm&logoColor=cacde2&labelColor=2c2c32&color=2196f3" /></a> <a href="https://github.com/vsce-toolroom/vscode-beautify/pipelines" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/zm-cttae/dom-inline-style-filter/CI.svg?style=flat-square&label	=CI&logo=github&logoColor=cacde2&labelColor=2c2c32&color=2196f3" /></a></p>
+
 `dom-inline-style-filter` library filters inline style declarations for a standalone DOM element tree by computed effect.
 
 - As web developers, we would like elements that ship only with inline styling to be light so that they can be included in NPM packages.
@@ -58,7 +62,7 @@ $O(log(N))$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
 | Post-compression bytes    | 504.8kb                                  |
 | Compression quotients     | [0.2252, 0.6967, 0.8525]                 |
 | Total quotient (compound) | `0.1337                                ` |
-| Decay formula             | $1-exp(-5 / 8 \cdot N)$                  |
+| Decay formula             | $1-exp(-13 / 20 \cdot N)$                |
 
 ### Small file results
 
