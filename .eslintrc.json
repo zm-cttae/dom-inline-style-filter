@@ -2,14 +2,19 @@
   "env": {
     "shared-node-browser": true,
     "node": true,
-    "es2021": true
+    "es2021": true,
+    "amd": true,
+    "worker": true
   },
   "extends": "eslint:recommended",
   "ignorePatterns": [
-    "./dist/**/*.js"
+    "./dist/index.min.js"
   ],
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "script"
+  },
+  "rules": {
+    "no-cond-assign": "off"
   }
 }
