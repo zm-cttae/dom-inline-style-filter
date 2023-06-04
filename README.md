@@ -26,7 +26,9 @@ Synchronous version. Returns `node` when the styling compression is completed.
 
 1.  **When traversing DOM tree of `node`, group nodes by descending node depth.**
 
-    CSS inheritance is computed on the DOM tree via preorder traversal and is additive-cumulative (increases styling data). For the filter op which is subtractive, we want to traverse the tree in the opposite direction.
+    CSS inheritance is computed on the DOM tree via preorder traversal and is additive-cumulative (increases styling data).
+	
+	For the filter op which is subtractive, we want to traverse the tree in the opposite direction.
     
     The algorithm sorts elements in the `node` tree by descending node depth. (This is known as reverse level order traversal.)
 
@@ -34,7 +36,9 @@ Synchronous version. Returns `node` when the styling compression is completed.
 
 2.  **When filtering each inline style declaration by computed effect, go for the most hyphenated properties first.**
 
-    In CSS, shorthands consistently have less hyphens than their longhand. We want to filter out scenarios where a CSS property matches their shorthand, e.g. `block-size` -> `height` or `border-color` -> `border`.
+    In CSS, shorthands consistently have less hyphens than their longhand.
+
+	We want to filter out scenarios where a CSS property matches their shorthand, e.g. `block-size` -> `height` or `border-color` -> `border`.
 
     The algorithm does a radix sort with bitmasks for standard, custom and vendored proprties, then subsorts by descending hyphen count.
 
@@ -50,34 +54,40 @@ The data was collected from manual testing on the output of the `domtoimage.toSv
 
 $O(log(N))$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
 
-| Wikipedia article demo    | Value                                    |
-| :------------------------ | :--------------------------------------- |
-| Number of nodes           | 5894 nodes                               |
-| Initial declaration count | 128581 (21.8 declarations / node)        |
-| Pre-compression bytes     | 3.77mb                                   |
-| Reductions                | [2924992, 257746, 87120, 0]              |
-| Processing time           | 9642.8ms (1.64 ms/node)                  |
-| Total reduction           | 3.27mb                                   |
-| Output declaration count  | 15853 (2.69 / node)                      |
-| Post-compression bytes    | 504.8kb                                  |
-| Compression quotients     | [0.2252, 0.6967, 0.8525]                 |
-| Total quotient (compound) | `0.1337                                ` |
-| Decay formula             | $1-exp(-13 / 20 \cdot N)$                |
+| Wikipedia article demo    | Value                                  |
+| :------------------------ | :------------------------------------- |
+| Number of nodes           | 5894 nodes                             |
+| Initial declaration count | 128581 (21.8 declarations / node)      |
+| Pre-compression bytes     | 3.77mb                                 |
+| Reductions                | [2924992, 257746, 87120, 0]            |
+| Processing time           | 9642.8ms (1.64 ms/node)                |
+| Total reduction           | 3.27mb                                 |
+| Output declaration count  | 15853 (2.69 / node)                    |
+| Post-compression bytes    | 504.8kb                                |
+| Compression quotients     | [0.2252, 0.6967, 0.8525, 1]            |
+| Total quotient (compound) | `0.1337                              ` |
+| Decay formula             | $1-exp(-33 / 20 \cdot N)$              |
+
+### Graph
+
+<img src="./assets/236925669-a3461c94-c1dd-4d42-9bd1-55484c084614.png" width="539px" />
 
 ### Small file results
 
 $O(c \cdot N), \space c \space \approx \space 4$ growth for inputs at small filesizes $|F| << 1e6\space\text{ bytes}$.
 
-| Code screenshot demo      | Value                                    |
-| :------------------------ | :--------------------------------------- |
-| Number of nodes           | 468 nodes                                |
-| Initial declaration count | 11397 (24.4 declarations / node)         |
-| Pre-compression bytes     | 373608b                                  |
-| Reductions                | [292044, 34152, 0]                       |
-| Processing time           | 382ms (0.8 ms / node)                    |
-| Total reduction           | 326196b                                  |
-| Post-compression bytes    | 47412b                                   |
-| Output declaration count  | 1777 (3.78 / node)                       |
-| Compression quotients     | [0.2183, 0.5813]                         |
-| Total quotient (compound) | `0.1269                                ` |
-| Decay formula             | $4/25 \cdot (N^2 - N) <= 1$              |
+| Code screenshot demo      | Value                                  |
+| :------------------------ | :------------------------------------- |
+| Number of nodes           | 468 nodes                              |
+| Initial declaration count | 11397 (24.4 declarations / node)       |
+| Pre-compression bytes     | 373608b                                |
+| Reductions                | [292044, 34152, 0]                     |
+| Processing time           | 382ms (0.8 ms / node)                  |
+| Total reduction           | 326196b                                |
+| Post-compression bytes    | 47412b                                 |
+| Output declaration count  | 1777 (3.78 / node)                     |
+| Compression quotients     | [0.895, 1]                             |
+| Total quotient (compound) | `0.1269                              ` |
+| Decay formula             | $1-exp(-89 / 40 \cdot N)$              |
+
+<img src="./assets/236925730-e880fabe-426f-491e-a95f-989536c9e3bc.png" width="539px" />
