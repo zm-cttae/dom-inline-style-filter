@@ -66,7 +66,7 @@ $O(log(N))$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
 | Post-compression bytes    | 504.8kb                                |
 | Compression quotients     | [0.2252, 0.6967, 0.8525, 1]            |
 | Total quotient (compound) | `0.1337                              ` |
-| Decay formula             | $1-exp(-33 / 20 \cdot N)$              |
+| Decay formula             | $1-exp(-8 / 5 \cdot N)$                |
 
 ### Graph
 
@@ -86,8 +86,8 @@ $O(c \cdot N), \space c \space \approx \space 4$ growth for inputs at small file
 | Total reduction           | 326196b                                |
 | Post-compression bytes    | 47412b                                 |
 | Output declaration count  | 1777 (3.78 / node)                     |
-| Compression quotients     | [0.895, 1]                             |
+| Compression quotients     | [0.892, 0.989, 0.999, 1]               |
 | Total quotient (compound) | `0.1269                              ` |
-| Decay formula             | $1-exp(-89 / 40 \cdot N)$              |
+| Decay formula             | $1-exp(-9 / 4 \cdot N)$                |
 
 <img src="./assets/236925730-e880fabe-426f-491e-a95f-989536c9e3bc.png" width="539px" />
