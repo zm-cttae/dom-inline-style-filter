@@ -118,8 +118,8 @@ function createSandbox() {
 	const iframe = globalThis.document.createElementNS('http://www.w3.org/1999/xhtml', 'iframe');
 	iframe.style.visibility = 'hidden';
 	iframe.style.position = 'fixed';
-	iframe.width = '100vw';
-	iframe.height = '100vh';
+	iframe.style.width = '100vw';
+	iframe.style.height = '100vh';
 	iframe.sandbox.add('allow-same-origin');
 	contentElement.appendChild(iframe);
 	const charsetDeclaration = iframe.contentDocument.createElement('meta');
