@@ -1,2 +1,7 @@
-demos
+assets/
+node_modules/
+src/
+.editorconfig
+.eslintrc.json
+.gitignore
 rollup.config.js
