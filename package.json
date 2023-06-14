@@ -2,10 +2,12 @@
   "name": "dom-inline-style-filter",
   "version": "1.0.0",
   "description": "High-pass data compression filter for inline styling (embedded CSS) by computed effect.",
-  "main": "./dist/index.js",
+  "main": "./dist/index.min.js",
   "scripts": {
     "build": "rollup --config ./rollup.config.js",
-    "test": "eslint"
+    "test": "npm-run-all build test-syntax test-lint",
+    "test-lint": "eslint src/index.js",
+    "test-syntax": "node --check src/index.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +25,8 @@
   "devDependencies": {
     "@lopatnov/rollup-plugin-uglify": "^2.1.5",
     "eslint": "^8.40.0",
+    "eslint-plugin-jsdoc": "^46.2.6",
+    "npm-run-all": "^4.1.5",
     "rollup": "^3.21.5",
     "rollup-plugin-commonjs": "^10.1.0",
     "terser": "^5.17.1"

@@ -6,15 +6,115 @@
     "amd": true,
     "worker": true
   },
-  "extends": "eslint:recommended",
+  "extends": ["eslint:recommended"],
   "ignorePatterns": [
-    "./dist/index.min.js"
+    "dist/index.min.js"
+  ],
+  "plugins": [
+    "jsdoc"
   ],
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "script"
   },
   "rules": {
-    "no-cond-assign": "off"
+    "arrow-body-style": "error",
+    "arrow-parens": [
+      "off",
+      "always"
+    ],
+    "brace-style": [
+      "error",
+      "1tbs"
+    ],
+    "comma-dangle": "off",
+    "complexity": "off",
+    "constructor-super": "error",
+    "curly": "error",
+    "dot-notation": "error",
+    "eol-last": "error",
+    "eqeqeq": "error",
+    "guard-for-in": "error",
+    "id-blacklist": "off",
+    "id-match": "off",
+    "import/order": "off",
+    "indent": [
+      "error",
+      "tab",
+      {
+        "SwitchCase": 1
+      }
+    ],
+    "jsdoc/check-alignment": "error",
+    "max-classes-per-file": ["off"],
+    "max-len": [
+      "error",
+      {
+        "code": 120,
+        "ignorePattern": "^(?!\\s*\\}?\\s*(?:else|if|else\\s+if)\\s*).*\\{$",
+        "ignoreRegExpLiterals": true,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreUrls": true
+      }
+    ],
+    "new-parens": "error",
+    "no-bitwise": "off",
+    "no-caller": "error",
+    "no-cond-assign": "off",
+    "no-console": "error",
+    "no-debugger": "error",
+    "no-empty": "error",
+    "no-eval": "error",
+    "no-fallthrough": "off",
+    "no-invalid-this": "off",
+    "no-multiple-empty-lines": "error",
+    "no-new-wrappers": "error",
+    "no-shadow": "error",
+    "no-throw-literal": "error",
+    "no-trailing-spaces": "error",
+    "no-undef-init": "error",
+    "no-underscore-dangle": "off",
+    "no-unsafe-finally": "error",
+    "no-unused-expressions": "error",
+    "no-unused-labels": "error",
+    "no-use-before-define": "off",
+    "no-var": "error",
+    "object-shorthand": "error",
+    "one-var": [
+      "error",
+      "never"
+    ],
+    "prefer-const": "error",
+    "quote-props": [
+      "error",
+      "consistent-as-needed"
+    ],
+    "quotes": [
+      "error",
+      "single"
+    ],
+    "radix": "error",
+    "semi": "error",
+    "space-before-function-paren": [
+      "error",
+      {
+        "anonymous": "never",
+        "asyncArrow": "always",
+        "named": "never"
+      }
+    ],
+    "spaced-comment": [
+      "error",
+      "always",
+      {
+        "markers": [
+          "/"
+        ]
+      }
+    ],
+    "use-isnan": "error",
+    "valid-typeof": "off",
+    "sort-keys": "error"
   }
 }

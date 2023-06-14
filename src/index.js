@@ -29,11 +29,13 @@ const dominlinestylefilter = function(clone) {
  * @returns {HTMLElement}
  */
 dominlinestylefilter.sync = function(clone) {
-	let context = new Context(clone);
+	const context = new Context(clone);
 	try {
 		let value = execute(stageCloneWith(context));
 		[collectTree, sortAscending, multiPassFilter, unstageClone]
-			.forEach(function(fn) { value = fn(value) });
+			.forEach(function(fn) {
+				value = fn(value);
+			});
 		return value;
 	} catch(e) {
 		unstageClone(context);
@@ -100,8 +102,12 @@ function Styles(element, context) {
  */
 function execute(executor) {
 	let result;
-	const resolver = (value) => { result = value; };
-	const rejector = (reason) => { throw new Error(reason); };
+	const resolver = (value) => {
+		result = value;
+	};
+	const rejector = (reason) => {
+		throw new Error(reason);
+	};
 	executor(resolver, rejector);
 	return result;
 }
@@ -140,7 +146,9 @@ function stageCloneWith(context) {
 		context.sandbox = createSandbox();
 		context.self = context.sandbox.contentWindow;
 		context.self.document.body.appendChild(context.root);
-		if (!context.sandbox.parentElement) reject('failed to append sandbox iframe to DOM');
+		if (!context.sandbox.parentElement) {
+			reject('failed to append sandbox iframe to DOM');
+		}
 		resolve(context);
 	};
 }
@@ -285,8 +293,12 @@ function filterWinningInlineStyles(element) {
 	// Prevents false positives in the declaration filter.
 	const animations = { 'animation-duration': '', 'transition-duration': '' };
 	for (const name in animations) {
-		animations[name] = styles.inline.getPropertyValue(name);
-		if (animations[name]) {
+		if (Object.prototype.hasOwnProperty.call(animations, name)) {
+			if (!animations[name]) {
+				continue;
+			}
+
+			animations[name] = styles.inline.getPropertyValue(name);
 			styles.inline.setProperty(name, '0s');
 		}
 	}
@@ -377,10 +389,14 @@ function spliceCssTextDeclaration(name) {
 	const value = this.inline.getPropertyValue(name);
 	const declarations = tokenizeCssTextDeclarations(this.inline.cssText);
 	const index = declarations.findIndex(d => name === getCssTextProperty(d));
-	if (index === -1) return;
+	if (index === -1) {
+		return;
+	}
 
 	this.inline.cssText = declarations.filter((_, i) => i !== index).join('; ') + ';';
-	if (value === this.computed.getPropertyValue(name)) return;
+	if (value === this.computed.getPropertyValue(name)) {
+		return;
+	}
 	this.inline.cssText = declarations.join('; ') + ';';
 }
 
