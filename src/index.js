@@ -159,8 +159,9 @@ function stageCloneWith(context) {
  */
 function collectTree(context) {
 	const walker = context.self.document.createTreeWalker(context.root, globalThis.NodeFilter.SHOW_ELEMENT);
-	context.tree = [walker.currentNode];
 	context.cutoff = context.depth = 1;
+	context.tree = [context.root];
+	context.depths = [context.depth];
 	context.stack = [];
 	context.pyramid = [];
 
@@ -213,10 +214,12 @@ function getDepth(element, i) {
 	if (element.previousElementSibling === previous) {
 		return context.depth;
 	}
-	let parentIndex = context.stack.pop();
-	while (typeof parentIndex === 'number' && element.parentElement !== context.tree[parentIndex]) {
-		context.depth -= 1;
-		parentIndex = context.stack.pop();
+	for (let index = context.stack.length; index >= 0; index--) {
+		const parentIndex = context.stack[index];
+		if (context.tree[parentIndex] === element.parentElement) {
+			context.depth = context.depths[parentIndex] + 1;
+			context.stack = context.stack.slice(0, index + 1);
+		}
 	}
 	return context.depth;
 }
