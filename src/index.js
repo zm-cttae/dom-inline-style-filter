@@ -369,7 +369,7 @@ function compareHyphenCount(a, b) {
 	return (
 		(isCustom(a) & !isCustom(b)) * 0b1000000 |
 		(isVendored(a) & !isVendored(b)) * 0b0100000 |
-		Math.max(a.split('-').length - b.split('-').length, 0b0011111)
+		Math.min(b.split('-').length - a.split('-').length, 0b0011111)
 	);
 }
 
@@ -418,6 +418,5 @@ function unstageClone(context) {
 		context.self = null;
 		context.sandbox = null;
 	}
-	context.tree = null;
 	return context.root;
 }
