@@ -56,17 +56,17 @@ $O(log(N))$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
 
 | Wikipedia article demo    | Value                                  |
 | :------------------------ | :------------------------------------- |
-| Number of nodes           | 5894 nodes                             |
-| Initial declaration count | 128581 (21.8 declarations / node)      |
-| Pre-compression bytes     | 3.77mb                                 |
-| Reductions                | [2924992, 257746, 87120, 0]            |
-| Processing time           | 9642.8ms (1.64 ms/node)                |
-| Total reduction           | 3.27mb                                 |
-| Output declaration count  | 15853 (2.69 / node)                    |
-| Post-compression bytes    | 504.8kb                                |
-| Compression quotients     | [0.2252, 0.6967, 0.8525, 1]            |
-| Total quotient (compound) | `0.1337                              ` |
-| Decay formula             | $1-exp(-8 / 5 \cdot N)$                |
+| Number of nodes           | 5558 nodes                             |
+| Initial declaration count | 177818 (31.9 declarations / node)      |
+| Pre-compression bytes     | 3.63mb                                 |
+| Reductions                | [3058654, 98781, 16774, 0]             |
+| Processing time           | 10316.5ms (1.86 ms/node)               |
+| Total reduction           | 3.17mb                                 |
+| Output declaration count  | 33643 (6.05 / node)                    |
+| Post-compression bytes    | 709.4kb                                |
+| Compression quotients     | [0.9698, 0.9991, 0.9999, 1]            |
+| Compression ratio         | `5.117                               ` |
+| Decay formula             | $1-exp(-7 / 2 \cdot N)$                |
 
 ### Graph
 
@@ -78,16 +78,16 @@ $O(c \cdot N), \space c \space \approx \space 4$ growth for inputs at small file
 
 | Code screenshot demo      | Value                                  |
 | :------------------------ | :------------------------------------- |
-| Number of nodes           | 468 nodes                              |
-| Initial declaration count | 11397 (24.4 declarations / node)       |
-| Pre-compression bytes     | 373608b                                |
-| Reductions                | [292044, 34152, 0]                     |
-| Processing time           | 382ms (0.8 ms / node)                  |
-| Total reduction           | 326196b                                |
-| Post-compression bytes    | 47412b                                 |
-| Output declaration count  | 1777 (3.78 / node)                     |
-| Compression quotients     | [0.892, 0.989, 0.999, 1]               |
-| Total quotient (compound) | `0.1269                              ` |
+| Number of nodes           | 420 nodes                              |
+| Initial declaration count | 14933 (35.5 declarations / node)       |
+| Pre-compression bytes     | 372430b                                |
+| Reductions                | [275482, 40312, 0]                     |
+| Processing time           | 604ms (1.6 ms / node)                  |
+| Total reduction           | 315794b                                |
+| Post-compression bytes    | 56636b                                 |
+| Output declaration count  | 2443 (5.82 / node)                     |
+| Compression quotients     | [0.872, 0.999, 1]                      |
+| Total quotient (compound) | `6.575                               ` |
 | Decay formula             | $1-exp(-9 / 4 \cdot N)$                |
 
 <img src="./assets/236925730-e880fabe-426f-491e-a95f-989536c9e3bc.png" width="539px" />

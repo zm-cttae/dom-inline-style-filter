@@ -1,6 +1,6 @@
 {
   "name": "dom-inline-style-filter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "High-pass data compression filter for inline styling (embedded CSS) by computed effect.",
   "main": "./dist/index.min.js",
   "scripts": {
