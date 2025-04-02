@@ -122,17 +122,74 @@ function execute(executor) {
  */
 function createSandbox() {
 	const iframe = globalThis.document.createElementNS('http://www.w3.org/1999/xhtml', 'iframe');
+	iframe.id = 'dominlinestylefilter-sandbox-' + getRandomFourDigit();
 	iframe.style.visibility = 'hidden';
 	iframe.style.position = 'fixed';
 	iframe.style.width = '100vw';
 	iframe.style.height = '100vh';
-	iframe.sandbox.add('allow-same-origin');
+
+	// figure out how this document is defined (doctype and charset)
+	const charsetToUse = globalThis.document.characterSet || 'UTF-8';
+	const docType = globalThis.document.doctype;
+	const docTypeDeclaration = docType
+		? `<!DOCTYPE ${escapeHTML(docType.name)} ${escapeHTML(
+			docType.publicId
+		)} ${escapeHTML(docType.systemId)}`.trim() + '>'
+		: '';
+
 	contentElement.appendChild(iframe);
-	const charsetDeclaration = iframe.contentDocument.createElement('meta');
-	charsetDeclaration.setAttribute('charset', globalThis.document.characterSet || 'UTF-8');
-	iframe.contentDocument.head.appendChild(charsetDeclaration);
-	iframe.contentDocument.title = iframe.id = 'dominlinestylefilter-sandbox';
-	return iframe;
+
+	return tryTechniques(
+		iframe,
+		docTypeDeclaration,
+		charsetToUse,
+		iframe.id
+	);
+
+	function getRandomFourDigit() {
+		return Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000;
+	}
+
+	function escapeHTML(unsafeText) {
+		if (unsafeText) {
+			const div = globalThis.document.createElement('div');
+			div.innerText = unsafeText;
+			return div.innerHTML;
+		} else {
+			return '';
+		}
+	}
+
+	function tryTechniques(sandbox, doctype, charset, title) {
+		// try the good old-fashioned document write with all the correct attributes set
+		try {
+			sandbox.contentWindow.document.write(
+				`${doctype}<html><head><meta charset='${charset}'><title>${title}</title></head><body></body></html>`
+			);
+			return sandbox;
+		} catch (_) {
+			// swallow exception and fall through to next technique
+		}
+
+		const metaCharset = globalThis.document.createElement('meta');
+		metaCharset.setAttribute('charset', charset);
+
+		// let's attempt it using srcdoc, so we can still set the doctype and charset
+		try {
+			const sandboxDocument = globalThis.document.implementation.createHTMLDocument(title);
+			sandboxDocument.head.appendChild(metaCharset);
+			const sandboxHTML = doctype + sandboxDocument.documentElement.outerHTML;
+			sandbox.setAttribute('srcdoc', sandboxHTML);
+			return sandbox;
+		} catch (_) {
+			// swallow exception and fall through to the simplest path
+		}
+
+		// let's attempt it using contentDocument... here we're not able to set the doctype
+		sandbox.contentDocument.head.appendChild(metaCharset);
+		sandbox.contentDocument.title = title;
+		return sandbox;
+	}
 }
 
 /**
