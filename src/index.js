@@ -129,6 +129,8 @@ function Context(clone, options) {
 	this.cutoff = null;
 	/** @type number */
 	this.declarations = null;
+	/** @type number */
+	this.bytes = null;
 	/** @type number[] */
 	this.depths = [];
 	/** @type number */
@@ -388,6 +390,7 @@ function collectTree(context) {
 	context.stack = [];
 	context.pyramid = [];
 	context.declarations = 0;
+	context.bytes = 0;
 
 	let index = 0;
 	let clone;
@@ -397,6 +400,7 @@ function collectTree(context) {
 		const depth = getDepth.call(context, clone, index);
 		context.depths.push(depth);
 		context.declarations += clone.style.length;
+		context.bytes += clone.style.cssText.length;
 	}
 
 	return context;
@@ -454,35 +458,56 @@ function getDepth(element, i) {
  * @param {Context} context
  */
 function multiPassFilter(context) {
+	let tick; let tock;
+	let pass = 0;
+	const roundTo3dp = n => Math.round(n * 1000) / 1000;
 	context.pyramid.forEach(stripBlockComments);
 	context.root.querySelectorAll('style').forEach(filterWinningMediaQueries);
 
 	if (context.options.debug) {
+		console.info('context.pyramid.length', context.pyramid.length);
 		console.info('context.declarations', context.declarations);
+		console.info('context.bytes', context.bytes);
 	}
 
-	// If there are >~32 base2 declarations, we need to filter the inline styles in a separate pass.
-	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 5) {
+	// If there are >~64base2 declarations, we need to filter the inline styles in a separate pass.
+	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 6) {
 		if (context.options.debug) {
-			console.info('context.declarations', 'filterAuthorInlineStyles', context.declarations);
+			tick = performance.now();
 		}
+
 		context.pyramid.forEach(filterAuthorInlineStyles.bind(null, context));
+
 		if (context.options.debug) {
 			console.info('context.declarations', 'filterAuthorInlineStyles', context.declarations);
+			console.info('context.bytes', 'filterAuthorInlineStyles', context.bytes);
+
+			tock = performance.now();
+			console.info('runtime', 'filterAuthorInlineStyles', roundTo3dp(tock - tick));
 		}
 	}
 
 	// Filter the inline styles again with multiple exploratory passes of DOM style computation.
+	if (context.options.debug) {
+		tick = performance.now();
+	}
 	while (context.delta !== 0) {
-		if (context.options.debug) {
-			console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
-		}
 		context.delta = 0;
 		context.pyramid.forEach(filterWinningInlineStyles.bind(null, context));
+
 		if (context.options.debug) {
+			pass += 1;
 			console.info('context.delta', context.delta);
-			console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
+			console.info('context.declarations', 'filterWinningInlineStyles pass #' + pass, context.declarations);
+			console.info('context.bytes', 'filterWinningInlineStyles pass #' + pass, context.bytes);
 		}
+	}
+	if (context.options.debug) {
+		console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
+		console.info('context.bytes', 'filterWinningInlineStyles', context.bytes);
+
+		tock = performance.now();
+		console.info('runtime', 'filterWinningInlineStyles', roundTo3dp(tock - tick));
 	}
 
 	return context;
@@ -571,7 +596,9 @@ function filterWinningInlineStyles(context, element) {
 	}
 
 	const styles = new Styles(context, element);
-	context.delta += context.declarations;
+	const initialBytes = styles.inline.cssText.length;
+	context.bytes -= initialBytes;
+	context.delta += initialBytes;
 
 	// Disable dynamic property changes in CSS computed values.
 	const animations = freezeStyleAnimations(styles);
@@ -586,7 +613,9 @@ function filterWinningInlineStyles(context, element) {
 	// Restore dynamic CSS properties.
 	unfreezeStyleAnimations(styles, animations);
 
-	context.delta -= context.declarations;
+	const finalBytes = styles.inline.cssText.length;
+	context.bytes += finalBytes;
+	context.delta -= finalBytes;
 
 	if (element.getAttribute('style') === '') {
 		element.removeAttribute('style');
