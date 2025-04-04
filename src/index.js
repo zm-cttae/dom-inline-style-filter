@@ -423,11 +423,21 @@ function compareHyphenCount(a, b) {
 	const isCustom = (name) => /^--\b/.test(name);
 	const isVendored = (name) => /^-\b/.test(name);
 
-	return (
-		(isCustom(a) & !isCustom(b)) * 0b1000000 |
-		(isVendored(a) & !isVendored(b)) * 0b0100000 |
-		Math.min(b.split('-').length - a.split('-').length, 0b0011111)
-	);
+	if (isCustom(a) && !isCustom(b)) {
+		return 1;
+	}
+	if (!isCustom(a) && isCustom(b)) {
+		return -1;
+	}
+
+	if (isVendored(a) && !isVendored(b)) {
+		return 1;
+	}
+	if (!isVendored(a) && isVendored(b)) {
+		return -1;
+	}
+
+	return b.split('-').length - a.split('-').length;
 }
 
 /**
