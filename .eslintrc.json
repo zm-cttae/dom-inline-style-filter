@@ -62,7 +62,7 @@
     "no-bitwise": "off",
     "no-caller": "error",
     "no-cond-assign": "off",
-    "no-console": "error",
+    "no-console": ["error" , { "allow": ["info"] }],
     "no-debugger": "error",
     "no-empty": "error",
     "no-eval": "error",
