@@ -2,6 +2,55 @@ const contentElement = globalThis.document.body || globalThis.document.documentE
 const cssBlockCommentRegex = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//g;
 const cssDeclarationColonRegex = /;\s*(?=-*\w+(?:-\w+)*:\s*(?:[^"']*["'][^"']*["'])*[^"']*$)/g;
 
+let removeDefaultStylesTimeoutId = null;
+let tagNameDefaultStyles = {};
+
+const ascentStoppers = new Set([
+	// these come from https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements
+	'ADDRESS',
+	'ARTICLE',
+	'ASIDE',
+	'BLOCKQUOTE',
+	'DETAILS',
+	'DIALOG',
+	'DD',
+	'DIV',
+	'DL',
+	'DT',
+	'FIELDSET',
+	'FIGCAPTION',
+	'FIGURE',
+	'FOOTER',
+	'FORM',
+	'H1',
+	'H2',
+	'H3',
+	'H4',
+	'H5',
+	'H6',
+	'HEADER',
+	'HGROUP',
+	'HR',
+	'LI',
+	'MAIN',
+	'NAV',
+	'OL',
+	'P',
+	'PRE',
+	'SECTION',
+	'SVG',
+	'TABLE',
+	'UL',
+	// this is some non-standard ones
+	'math', // intentionally lowercase, thanks Safari
+	'RUBY', // in case we have a ruby element
+	'svg', // in case we have an svg embedded element
+	// these are ultimate stoppers in case something drastic changes in how the DOM works
+	'BODY',
+	'HEAD',
+	'HTML',
+]);
+
 /**
  * Filter inline style declarations for a DOM element tree by computed effect.
  * Estimated inline style reduction at 80% to 90%.
@@ -9,13 +58,17 @@ const cssDeclarationColonRegex = /;\s*(?=-*\w+(?:-\w+)*:\s*(?:[^"']*["'][^"']*["
  * @param {HTMLElement} clone
  *      HTML clone with styling from inline attributes and embedded stylesheets only.
  *      Expects fonts and images to have been previously embedded into the page.
+ * @param {Record<string, boolean>} [options]
+ *      Options for the filter.
+ * @param {boolean} [options.debug=false]
+ *      Enable debug logging.
  * @returns {Promise<HTMLElement>}
  *      A promise that resolves to the `clone` reference, now stripped of inline styling
  *      declarations without a computed effect.
  * @exports dominlinestylefilter
  */
-const dominlinestylefilter = function(clone) {
-	const context = new Context(clone);
+const dominlinestylefilter = function(clone, options) {
+	const context = new Context(clone, 	options || {});
 	return new Promise(stageCloneWith(context))
 		.then(collectTree)
 		.then(sortAscending)
@@ -25,11 +78,13 @@ const dominlinestylefilter = function(clone) {
 
 /**
  * Synchronous version of {@link onclone}.
- * @param {HTMLElement} clone
+ * @param {HTMLElement} clone HTML clone.
+ * @param {Record<string, boolean>} [options] Filter options.
+ * @param {boolean} [options.debug=false] Enable debug logging.
  * @returns {HTMLElement}
  */
-dominlinestylefilter.sync = function(clone) {
-	const context = new Context(clone);
+dominlinestylefilter.sync = function(clone, options) {
+	const context = new Context(clone, options || {});
 	try {
 		let value = execute(stageCloneWith(context));
 		[collectTree, sortAscending, multiPassFilter, unstageClone]
@@ -47,48 +102,61 @@ module.exports = dominlinestylefilter;
 
 /**
  * Process context to propogate in promise chain.
- * @param {HTMLElement} clone
- *      Node with all computed styles dumped in the inline styling.
+ * @param {HTMLElement} clone Node with all computed styles dumped in the inline styling.
  * @constructor
  */
-function Context(clone) {
+function Context(clone, options) {
 	/** @type HTMLElement */
 	this.root = clone;
 	/** @type ChildNode */
 	this.sibling = clone.nextSibling;
 	/** @type HTMLElement | null */
 	this.parent = clone.parentElement;
+
 	/** @type HTMLElement | null */
 	this.sandbox = null;
 	/** @type Window */
 	this.self = null;
+
 	/** @type Node[] */
 	this.tree = null;
 	/** @type Node[] */
 	this.stack = [];
 	/** @type Node[] */
 	this.pyramid = null;
+
 	/** @type number */
 	this.cutoff = null;
+	/** @type number */
+	this.declarations = null;
 	/** @type number[] */
 	this.depths = [];
 	/** @type number */
 	this.depth = null;
 	/** @type number */
 	this.delta = null;
+
+	/** @type Record<string, boolean> */
+	this.options = options;
+	/** @type boolean */
+	this.options.debug = options.debug || false;
 }
 
 /**
  * Styling data for a HTML element.
- * @param {HTMLElement} element Element in the DOM tree of clone.
  * @param {Context} context
+ * @param {HTMLElement} element Element in the DOM tree of clone.
  * @constructor
  */
-function Styles(element, context) {
-	/** @type CSSStyleDeclaration */
+function Styles(context, element) {
+	/** @type {Context} */
+	this.context = context;
+	/** @type {HTMLElement} */
+	this.element = element;
+	/** @type {CSSStyleDeclaration} */
 	this.inline = element.style;
-	/** @type CSSStyleDeclaration */
-	this.computed = context.sandbox.contentWindow.getComputedStyle(element);
+	/** @type {CSSStyleDeclaration} */
+	this.computed = context.self.getComputedStyle(element);
 }
 
 /**
@@ -161,20 +229,20 @@ function createSandbox() {
 	}
 
 	function tryTechniques(sandbox, doctype, charset, title) {
-		// try the good old-fashioned document write with all the correct attributes set
+		// Try the good old-fashioned document write with all the correct attributes set
 		try {
 			sandbox.contentWindow.document.write(
 				`${doctype}<html><head><meta charset='${charset}'><title>${title}</title></head><body></body></html>`
 			);
 			return sandbox;
 		} catch (_) {
-			// swallow exception and fall through to next technique
+			// Swallow exception and fall through to next technique
 		}
 
 		const metaCharset = globalThis.document.createElement('meta');
 		metaCharset.setAttribute('charset', charset);
 
-		// let's attempt it using srcdoc, so we can still set the doctype and charset
+		// Let's attempt it using srcdoc, so we can still set the doctype and charset
 		try {
 			const sandboxDocument = globalThis.document.implementation.createHTMLDocument(title);
 			sandboxDocument.head.appendChild(metaCharset);
@@ -182,13 +250,111 @@ function createSandbox() {
 			sandbox.setAttribute('srcdoc', sandboxHTML);
 			return sandbox;
 		} catch (_) {
-			// swallow exception and fall through to the simplest path
+			// Swallow exception and fall through to the simplest path
 		}
 
-		// let's attempt it using contentDocument... here we're not able to set the doctype
+		// Let's attempt it using contentDocument... here we're not able to set the doctype
 		sandbox.contentDocument.head.appendChild(metaCharset);
 		sandbox.contentDocument.title = title;
 		return sandbox;
+	}
+}
+
+/**
+ * Returns the default styles for a given element in the DOM tree.
+ * If the styles have already been computed, it returns the cached value.
+ * @param {Context} context
+ * @param {HTMLElement} sourceElement
+ */
+function getDefaultStyle(context, sourceElement) {
+	const tagHierarchy = computeTagHierarchy(sourceElement);
+	const tagKey = computeTagKey(tagHierarchy);
+	if (tagNameDefaultStyles[tagKey]) {
+		return tagNameDefaultStyles[tagKey];
+	}
+
+	// We haven't cached the answer for that hierachy yet, build a
+	// sandbox (if not yet created), fill it with the hierarchy that
+	// matters, and grab the default styles associated
+	const defaultElement = constructElementHierachy(
+		context.self.document,
+		tagHierarchy
+	);
+	const defaultStyle = computeStyleForDefaults(context.self, defaultElement);
+	destroyElementHierarchy(defaultElement);
+
+	tagNameDefaultStyles[tagKey] = defaultStyle;
+	return defaultStyle;
+
+	function computeTagHierarchy(sourceNode) {
+		const tagNames = [sourceNode.tagName];
+
+		if (ascentStoppers.has(sourceNode.tagName)) {
+			return tagNames;
+		}
+
+		let targetNode = sourceNode;
+		while ((targetNode = targetNode.parentNode)) {
+			if (targetNode.nodeType === globalThis.Node.ELEMENT_NODE) {
+				const tagName = targetNode.tagName;
+				tagNames.push(tagName);
+
+				if (ascentStoppers.has(tagName)) {
+					break;
+				}
+			}
+		}
+
+		return tagNames;
+	}
+
+	function computeTagKey(hierarchy) {
+		return hierarchy
+			.filter((_, i, a) => i === 0 || i === a.length - 1)
+			.join(' ');
+	}
+
+	function constructElementHierachy(sandboxDocument, hierarchy) {
+		let element = sandboxDocument.body;
+		while (hierarchy.length > 0) {
+			const childTagName = hierarchy.pop();
+			const childElement = sandboxDocument.createElement(childTagName);
+			element.appendChild(childElement);
+			element = childElement;
+		}
+
+		// Ensure that there is some content, so that properties like margin are applied.
+		// we use zero-width space to handle FireFox adding a pixel
+		element.textContent = '\u200b';
+		return element;
+	}
+
+	function computeStyleForDefaults(sandboxWindow, sandboxElement) {
+		const style = {};
+		const defaultComputedStyle = sandboxWindow.getComputedStyle(sandboxElement);
+
+		// Copy styles to an object, making sure that 'width' and 'height' are given the default value of 'auto', since
+		// their initial value is always 'auto' despite that the default computed value is sometimes an absolute length.
+		Array.from(defaultComputedStyle).forEach(function(name) {
+			style[name] =
+				name === 'width' || name === 'height'
+					? 'auto'
+					: defaultComputedStyle.getPropertyValue(name);
+		});
+		return style;
+	}
+
+	function destroyElementHierarchy(element) {
+		let targetElement = element;
+		let parentElement = element.parentElement;
+
+		while (targetElement && targetElement.tagName !== 'BODY') {
+			parentElement = targetElement.parentElement;
+			if (parentElement !== null) {
+				parentElement.removeChild(targetElement);
+			}
+			targetElement = parentElement;
+		}
 	}
 }
 
@@ -221,6 +387,7 @@ function collectTree(context) {
 	context.depths = [context.depth];
 	context.stack = [];
 	context.pyramid = [];
+	context.declarations = 0;
 
 	let index = 0;
 	let clone;
@@ -229,6 +396,7 @@ function collectTree(context) {
 		context.tree.push(clone);
 		const depth = getDepth.call(context, clone, index);
 		context.depths.push(depth);
+		context.declarations += clone.style.length;
 	}
 
 	return context;
@@ -253,7 +421,8 @@ function sortAscending(context) {
 }
 
 /**
- * Transform .
+ * Get the depth of an element in the DOM tree.
+ * The depth is the number of ancestors in the tree, starting from 1 for the root element.
  * @param {HTMLElement} element
  */
 function getDepth(element, i) {
@@ -281,14 +450,39 @@ function getDepth(element, i) {
 	return context.depth;
 }
 
-/** Multi-pass inline CSS data optimization. */
+/** Multi-pass inline CSS data optimization.
+ * @param {Context} context
+ */
 function multiPassFilter(context) {
 	context.pyramid.forEach(stripBlockComments);
 	context.root.querySelectorAll('style').forEach(filterWinningMediaQueries);
 
+	if (context.options.debug) {
+		console.info('context.declarations', context.declarations);
+	}
+
+	// If there are >~32 base2 declarations, we need to filter the inline styles in a separate pass.
+	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 5) {
+		if (context.options.debug) {
+			console.info('context.declarations', 'filterAuthorInlineStyles', context.declarations);
+		}
+		context.pyramid.forEach(filterAuthorInlineStyles.bind(null, context));
+		if (context.options.debug) {
+			console.info('context.declarations', 'filterAuthorInlineStyles', context.declarations);
+		}
+	}
+
+	// Filter the inline styles again with multiple exploratory passes of DOM style computation.
 	while (context.delta !== 0) {
+		if (context.options.debug) {
+			console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
+		}
 		context.delta = 0;
-		context.pyramid.forEach(filterWinningInlineStyles.bind(context));
+		context.pyramid.forEach(filterWinningInlineStyles.bind(null, context));
+		if (context.options.debug) {
+			console.info('context.delta', context.delta);
+			console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
+		}
 	}
 
 	return context;
@@ -334,63 +528,132 @@ function filterWinningMediaQueries(style) {
 }
 
 /**
- * Exploratory filter to reduce an inline style to winning declarations (<2ms / element).
- * Destructively remove declarations and check if there is a computed value change. If so, restore.
- *
- * @param {HTMLElement} element
- *      Element in the DOM tree of `clone`.
- * @this {Context}
+ * Cache-optimized filter to reduce an inline style to author stylesheet declarations (400ns / element).
+ * Checks if the declaration matches the default and parent computed value and if so, remove.
  */
-function filterWinningInlineStyles(element) {
+function filterAuthorInlineStyles(context, element) {
 	if (!element.attributes.style) {
 		return;
 	}
 
-	const styles = new Styles(element, this);
-	this.delta += styles.inline.cssText.length;
+	const styles = new Styles(context, element);
 
-	// Hack to disable dynamic changes in CSS computed values.
-	// Prevents false positives in the declaration filter.
-	const animations = { 'animation-duration': '', 'transition-duration': '' };
-	for (const name in animations) {
-		if (Object.prototype.hasOwnProperty.call(animations, name)) {
-			if (!animations[name]) {
-				continue;
-			}
+	// Disable dynamic property changes in CSS computed values.
+	const animations = freezeStyleAnimations(styles);
 
-			animations[name] = styles.inline.getPropertyValue(name);
-			styles.inline.setProperty(name, '0s');
-		}
+	// If the element is not a root element, we need to check the parent computed styles.
+	const parentComputedStyle = element !== context.root
+		? context.self.getComputedStyle(element.parentElement)
+		: null;
+	const defaultStyle = getDefaultStyle(context, element);
+
+	// Splice explicit inline style declarations that match default and parent values.
+	Array.from(styles.inline)
+		.sort(compareHyphenCount)
+		.forEach(spliceAuthorCssStyleDeclaration.bind(null, styles, parentComputedStyle, defaultStyle));
+
+	// Restore dynamic CSS properties.
+	unfreezeStyleAnimations(styles, animations);
+
+	return element;
+}
+
+/**
+ * Exploratory filter to reduce an inline style to winning declarations (<2ms / element).
+ * Destructively remove declarations and check if there is a computed value change. If so, restore.
+ *
+ * @param {Context} context
+ * @param {HTMLElement} element Element in the DOM tree of `clone`.
+ */
+function filterWinningInlineStyles(context, element) {
+	if (!element.attributes.style) {
+		return;
 	}
+
+	const styles = new Styles(context, element);
+	context.delta += context.declarations;
+
+	// Disable dynamic property changes in CSS computed values.
+	const animations = freezeStyleAnimations(styles);
 
 	// Splice explicit inline style declarations without a computed effect in place.
 	// By prioritising standard CSS properties & lots of hyphens, we reduce attack time & perf load.
 	tokenizeCssTextDeclarations(styles.inline.cssText)
 		.map(getCssTextProperty)
 		.sort(compareHyphenCount)
-		.forEach(spliceCssTextDeclaration.bind(styles));
+		.forEach(spliceWinningCssTextDeclaration.bind(null, styles));
 
 	// Restore dynamic CSS properties.
-	for (const name in animations) {
-		if (animations[name].length) {
-			styles.inline.setProperty(name, animations[name]);
-		}
-	}
+	unfreezeStyleAnimations(styles, animations);
 
-	this.delta -= styles.inline.cssText.length;
+	context.delta -= context.declarations;
 
 	if (element.getAttribute('style') === '') {
 		element.removeAttribute('style');
 	}
 }
 
+const DEFAULT_ANIMATION_DURATION = '0s';
+
+/** @typedef {Record<`${string}-duration`, string>} Animations */
+
+/**
+ * Hack to freeze CSS animations and transitions and prevent dynamic property changes.
+ * This keeps CSS computed values constant and prevent false positives in the declaration filter.
+ *
+ * @param {Styles} styles
+ * @return {Animations|void}
+ */
+function freezeStyleAnimations(styles) {
+	let isDynamicElement = false;
+
+	const animations = { 'animation-duration': DEFAULT_ANIMATION_DURATION, 'transition-duration': DEFAULT_ANIMATION_DURATION };
+	for (const name in animations) {
+		if (!Object.prototype.hasOwnProperty.call(animations, name)) {
+			continue;
+		}
+
+		const value = styles.inline.getPropertyValue(name);
+
+		if (!value) {
+			continue;
+		}
+
+		if (value === DEFAULT_ANIMATION_DURATION) {
+			styles.inline.removeProperty(name);
+		} else {
+			isDynamicElement = true;
+			animations[name] = value;
+			styles.inline.setProperty(name, '0s');
+		}
+	}
+
+	return isDynamicElement ? animations : void 0;
+}
+
+/**
+ * Restore CSS animations and transitions to their original durations.
+ *
+ * @param {Styles} styles
+ * @param {Animations|undefined} animations
+ * @returns {void}
+ */
+function unfreezeStyleAnimations(styles, animations) {
+	if (!animations) {
+		return;
+	}
+	for (const name in animations) {
+		if (animations[name].length) {
+			styles.inline.setProperty(name, animations[name]);
+		}
+	}
+}
+
 /**
  * Tokenize inline styling declarations.
  *
- * @param {string} cssText
- *      Inline style attribute value for a HTML element.
- * @returns {string[]}
- *      List of inline styling declarations.
+ * @param {string} cssText Inline style attribute value for a HTML element.
+ * @returns {string[]} List of inline styling declarations.
  */
 function tokenizeCssTextDeclarations(cssText) {
 	return cssText.replace(/;\s*$/, '').split(cssDeclarationColonRegex);
@@ -399,10 +662,8 @@ function tokenizeCssTextDeclarations(cssText) {
 /**
  * Get property name from CSS declaration.
  *
- * @param {string} declaration
- *      Inline style declaration for a HTML element.
- * @returns {string}
- *      The CSS property for `declaration`.
+ * @param {string} declaration Inline style declaration for a HTML element.
+ * @returns {string} The CSS property for `declaration`.
  */
 function getCssTextProperty(declaration) {
 	return declaration.slice(0, declaration.indexOf(':'));
@@ -412,12 +673,9 @@ function getCssTextProperty(declaration) {
  * Sorts an array of CSS properties by the number of hyphens, keeping vendored prefixes last.
  * Optimize for compression gains and early hits by sending shorthand, vendored and custom properties last.
  *
- * @param {string} a
- *      First CSS property name.
- * @param {string} b
- *      Second CSS property name.
- * @returns {number}
- *      See {@link Array.prototype.sort}.
+ * @param {string} a First CSS property name.
+ * @param {string} b Second CSS property name.
+ * @returns {number} See {@link Array.prototype.sort}.
  */
 function compareHyphenCount(a, b) {
 	const isCustom = (name) => /^--\b/.test(name);
@@ -441,33 +699,61 @@ function compareHyphenCount(a, b) {
 }
 
 /**
- * Filters style declarations in place to keep the algorithm deterministic.
- * The styles dumped by `copyUserComputedStyleFast` are position-dependent.
+ * Splices default CSS style declarations from the inline style attribute.
  *
- * @param {string} name
- *      Name of the CSS property explicitly declared in the inline styling.
- * @this {Styles}
+ * @param {Styles} styles
+ * @param {string} name Name of the CSS property explicitly declared in the inline styling.
  */
-function spliceCssTextDeclaration(name) {
+function spliceAuthorCssStyleDeclaration(styles, parentComputedStyle, defaultStyle, name) {
 	if (name === 'width' || name === 'height') { // cross-browser portability
 		return;
 	}
-	if (name === 'animation-duration' || name === 'transition-duration') { // dynamic property - line :256
+
+	const value = styles.inline.getPropertyValue(name);
+	const defaultValue = defaultStyle[name];
+	const parentComputedValue = parentComputedStyle
+		? parentComputedStyle.getPropertyValue(name)
+		: void 0;
+
+	// If the style does not match the default, or it does not match the parent's, set it. We don't know which
+	// styles are inherited from the parent and which aren't, so we have to always check both.
+	if (
+		(defaultValue && value === defaultValue) &&
+		(!parentComputedValue || (parentComputedStyle && value === parentComputedValue))
+	) {
+		styles.inline.removeProperty(name);
+		styles.context.declarations -= 1;
+	}
+}
+
+/**
+ * Filters style declarations in place to keep the algorithm deterministic.
+ * The styles dumped by `copyUserComputedStyleFast` are position-dependent.
+ *
+ * @param {Styles} styles
+ * @param {string} name Name of the CSS property explicitly declared in the inline styling.
+ */
+function spliceWinningCssTextDeclaration(styles, name) {
+	if (name === 'width' || name === 'height') { // cross-browser portability
+		return;
+	}
+	if (name === 'animation-duration' || name === 'transition-duration') { // dynamic property
 		return;
 	}
 
-	const value = this.inline.getPropertyValue(name);
-	const declarations = tokenizeCssTextDeclarations(this.inline.cssText);
+	const value = styles.inline.getPropertyValue(name);
+	const declarations = tokenizeCssTextDeclarations(styles.inline.cssText);
 	const index = declarations.findIndex(d => name === getCssTextProperty(d));
 	if (index === -1) {
 		return;
 	}
 
-	this.inline.cssText = declarations.filter((_, i) => i !== index).join('; ') + ';';
-	if (value === this.computed.getPropertyValue(name)) {
-		return;
+	styles.inline.cssText = declarations.filter((_, i) => i !== index).join('; ') + ';';
+	if (value === styles.computed.getPropertyValue(name)) {
+		styles.context.declarations -= 1;
+	} else {
+		styles.inline.cssText = declarations.join('; ') + ';';
 	}
-	this.inline.cssText = declarations.join('; ') + ';';
 }
 
 /**
@@ -485,5 +771,19 @@ function unstageClone(context) {
 		context.self = null;
 		context.sandbox = null;
 	}
+
+	if (context.options.debug) {
+		console.info('context.declarations', context.declarations);
+	}
+
+	if (removeDefaultStylesTimeoutId) {
+		clearTimeout(removeDefaultStylesTimeoutId);
+	}
+
+	removeDefaultStylesTimeoutId = setTimeout(() => {
+		removeDefaultStylesTimeoutId = null;
+		tagNameDefaultStyles = {};
+	}, 20 * 1000);
+
 	return context.root;
 }
