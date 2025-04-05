@@ -51,6 +51,8 @@ const ascentStoppers = new Set([
 	'HTML',
 ]);
 
+const DEFAULT_ANIMATION_DURATION = '0s';
+
 /**
  * Filter inline style declarations for a DOM element tree by computed effect.
  * Estimated inline style reduction at 80% to 90%.
@@ -389,8 +391,8 @@ function collectTree(context) {
 	context.depths = [context.depth];
 	context.stack = [];
 	context.pyramid = [];
-	context.declarations = 0;
-	context.bytes = 0;
+	context.declarations = context.root.style.length;
+	context.bytes = context.root.style.cssText.length;
 
 	let index = 0;
 	let clone;
@@ -454,7 +456,8 @@ function getDepth(element, i) {
 	return context.depth;
 }
 
-/** Multi-pass inline CSS data optimization.
+/**
+ * Multi-pass inline CSS data optimization.
  * @param {Context} context
  */
 function multiPassFilter(context) {
@@ -479,11 +482,12 @@ function multiPassFilter(context) {
 		context.pyramid.forEach(filterAuthorInlineStyles.bind(null, context));
 
 		if (context.options.debug) {
-			console.info('context.declarations', 'filterAuthorInlineStyles', context.declarations);
-			console.info('context.bytes', 'filterAuthorInlineStyles', context.bytes);
+			console.info('filterAuthorInlineStyles');
+			console.info('context.declarations', context.declarations);
+			console.info('context.bytes', context.bytes);
 
 			tock = performance.now();
-			console.info('runtime', 'filterAuthorInlineStyles', roundTo3dp(tock - tick));
+			console.info('runtime', roundTo3dp(tock - tick));
 		}
 	}
 
@@ -497,17 +501,19 @@ function multiPassFilter(context) {
 
 		if (context.options.debug) {
 			pass += 1;
+			console.info('filterWinningInlineStyles', 'pass #' + pass);
 			console.info('context.delta', context.delta);
-			console.info('context.declarations', 'filterWinningInlineStyles pass #' + pass, context.declarations);
-			console.info('context.bytes', 'filterWinningInlineStyles pass #' + pass, context.bytes);
+			console.info('context.declarations', context.declarations);
+			console.info('context.bytes', context.bytes);
 		}
 	}
 	if (context.options.debug) {
-		console.info('context.declarations', 'filterWinningInlineStyles', context.declarations);
-		console.info('context.bytes', 'filterWinningInlineStyles', context.bytes);
+		console.info('filterWinningInlineStyles');
+		console.info('context.declarations', context.declarations);
+		console.info('context.bytes', context.bytes);
 
 		tock = performance.now();
-		console.info('runtime', 'filterWinningInlineStyles', roundTo3dp(tock - tick));
+		console.info('runtime', roundTo3dp(tock - tick));
 	}
 
 	return context;
@@ -562,6 +568,8 @@ function filterAuthorInlineStyles(context, element) {
 	}
 
 	const styles = new Styles(context, element);
+	const initialBytes = styles.inline.cssText.length;
+	context.bytes -= initialBytes;
 
 	// Disable dynamic property changes in CSS computed values.
 	const animations = freezeStyleAnimations(styles);
@@ -580,11 +588,14 @@ function filterAuthorInlineStyles(context, element) {
 	// Restore dynamic CSS properties.
 	unfreezeStyleAnimations(styles, animations);
 
+	const finalBytes = styles.inline.cssText.length;
+	context.bytes += finalBytes;
+
 	return element;
 }
 
 /**
- * Exploratory filter to reduce an inline style to winning declarations (<2ms / element).
+ * Exploratory filter to reduce an inline style to winning declarations (~1.4ms / element).
  * Destructively remove declarations and check if there is a computed value change. If so, restore.
  *
  * @param {Context} context
@@ -622,8 +633,6 @@ function filterWinningInlineStyles(context, element) {
 	}
 }
 
-const DEFAULT_ANIMATION_DURATION = '0s';
-
 /** @typedef {Record<`${string}-duration`, string>} Animations */
 
 /**
@@ -636,7 +645,10 @@ const DEFAULT_ANIMATION_DURATION = '0s';
 function freezeStyleAnimations(styles) {
 	let isDynamicElement = false;
 
-	const animations = { 'animation-duration': DEFAULT_ANIMATION_DURATION, 'transition-duration': DEFAULT_ANIMATION_DURATION };
+	const animations = {
+		'animation-duration': DEFAULT_ANIMATION_DURATION,
+		'transition-duration': DEFAULT_ANIMATION_DURATION
+	};
 	for (const name in animations) {
 		if (!Object.prototype.hasOwnProperty.call(animations, name)) {
 			continue;
@@ -799,10 +811,6 @@ function unstageClone(context) {
 	if (context.sandbox) {
 		context.self = null;
 		context.sandbox = null;
-	}
-
-	if (context.options.debug) {
-		console.info('context.declarations', context.declarations);
 	}
 
 	if (removeDefaultStylesTimeoutId) {
