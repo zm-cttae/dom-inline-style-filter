@@ -473,7 +473,7 @@ function multiPassFilter(context) {
 		console.info('context.bytes', context.bytes);
 	}
 
-	// If there are >~64base2 declarations, we need to filter the inline styles in a separate pass.
+	// If there are >~64 base2 declarations, we need to filter the inline styles in a separate pass.
 	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 6) {
 		if (context.options.debug) {
 			tick = performance.now();
@@ -769,7 +769,7 @@ function spliceAuthorCssStyleDeclaration(styles, parentComputedStyle, defaultSty
 
 /**
  * Filters style declarations in place to keep the algorithm deterministic.
- * The styles dumped by `copyUserComputedStyleFast` are position-dependent.
+ * The styles dumped by `filterAuthorInlineStyles` are position-dependent.
  *
  * @param {Styles} styles
  * @param {string} name Name of the CSS property explicitly declared in the inline styling.
