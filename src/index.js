@@ -51,6 +51,7 @@ const ascentStoppers = new Set([
 	'HTML',
 ]);
 
+const roundTo3dp = n => Math.round(n * 1000) / 1000;
 const DEFAULT_ANIMATION_DURATION = '0s';
 
 /**
@@ -461,34 +462,18 @@ function getDepth(element, i) {
  * @param {Context} context
  */
 function multiPassFilter(context) {
-	let tick; let tock;
+	let tick;
 	let pass = 0;
-	const roundTo3dp = n => Math.round(n * 1000) / 1000;
 	context.pyramid.forEach(stripBlockComments);
 	context.root.querySelectorAll('style').forEach(filterWinningMediaQueries);
 
-	if (context.options.debug) {
-		console.info('context.pyramid.length', context.pyramid.length);
-		console.info('context.declarations', context.declarations);
-		console.info('context.bytes', context.bytes);
-	}
+	tick = maybeDebugFilterAuthorInlineStyles(context);
 
 	// If there are >~64 base2 declarations, we need to filter the inline styles in a separate pass.
 	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 6) {
-		if (context.options.debug) {
-			tick = performance.now();
-		}
-
 		context.pyramid.forEach(filterAuthorInlineStyles.bind(null, context));
 
-		if (context.options.debug) {
-			console.info('filterAuthorInlineStyles');
-			console.info('context.declarations', context.declarations);
-			console.info('context.bytes', context.bytes);
-
-			tock = performance.now();
-			console.info('runtime', roundTo3dp(tock - tick));
-		}
+		maybeDebugFilterAuthorInlineStyles(context, tick);
 	}
 
 	// Filter the inline styles again with multiple exploratory passes of DOM style computation.
@@ -501,22 +486,73 @@ function multiPassFilter(context) {
 
 		if (context.options.debug) {
 			pass += 1;
-			console.info('filterWinningInlineStyles', 'pass #' + pass);
-			console.info('context.delta', context.delta);
-			console.info('context.declarations', context.declarations);
-			console.info('context.bytes', context.bytes);
+			maybeDebugFilterWinningInlineStyles(context, null, pass);
 		}
 	}
-	if (context.options.debug) {
+	maybeDebugFilterWinningInlineStyles(context, tick);
+
+	return context;
+}
+
+/**
+ * Abstracted debug logging for filterAuthorInlineStyles.
+ * @param {Context} context
+ * @param {number} [timestamp] Optional timestamp for performance measurement.
+ * @return {number|void} Timestamp for the function execution start.
+ */
+function maybeDebugFilterAuthorInlineStyles(context, timestamp) {
+	if (!context.options.debug) {
+		return;
+	}
+
+	// [INPUT] data for the default style filter before 1st pass.
+	if (!timestamp) {
+		console.info('filterAuthorInlineStyles');
+		console.info('context.pyramid.length', context.pyramid.length);
+		console.info('context.declarations', context.declarations);
+		console.info('context.bytes', context.bytes);
+		return performance.now();
+	}
+
+	// [OUTPUT] declaration count, bytecount and runtime (milliseconds).
+	console.info('filterAuthorInlineStyles');
+	console.info('context.declarations', context.declarations);
+	console.info('context.bytes', context.bytes);
+	console.info('runtime(ms)', roundTo3dp(performance.now() - timestamp));
+}
+
+/**
+ * Abstracted debug logging for filterWinningInlineStyles.
+ * @param {Context} context
+ * @param {number} [timestamp] Optional timestamp for performance measurement.
+ * @param {number} [pass] Optional pass count for logging.
+ * @return {number|void} Timestamp for the function execution start.
+ */
+function maybeDebugFilterWinningInlineStyles(context, timestamp, pass) {
+	if (!context.options.debug) {
+		return;
+	}
+
+	// [INPUT] data for the inline style filter before 1st pass.
+	if (!timestamp) {
 		console.info('filterWinningInlineStyles');
 		console.info('context.declarations', context.declarations);
 		console.info('context.bytes', context.bytes);
-
-		tock = performance.now();
-		console.info('runtime', roundTo3dp(tock - tick));
+		return performance.now();
 	}
 
-	return context;
+	// [PASS] iteration count and bytecount change for each pass.
+	if (pass) {
+		console.info('filterWinningInlineStyles', 'pass #' + pass);
+		console.info('context.delta', context.delta);
+	} else {
+		console.info('filterWinningInlineStyles');
+	}
+
+	// [OUTPUT] declaration count, bytecount and runtime (milliseconds).
+	console.info('context.declarations', context.declarations);
+	console.info('context.bytes', context.bytes);
+	console.info('runtime(ms)', roundTo3dp(performance.now() - timestamp));
 }
 
 /**
