@@ -478,7 +478,7 @@ function multiPassFilter(context) {
 
 	// Filter the inline styles again with multiple exploratory passes of DOM style computation.
 	if (context.options.debug) {
-		tick = performance.now();
+		tick = maybeDebugFilterWinningInlineStyles(context, null, pass);
 	}
 	while (context.delta !== 0) {
 		context.delta = 0;
@@ -534,7 +534,7 @@ function maybeDebugFilterWinningInlineStyles(context, timestamp, pass) {
 	}
 
 	// [INPUT] data for the inline style filter before 1st pass.
-	if (!timestamp) {
+	if (pass === 0) {
 		console.info('filterWinningInlineStyles');
 		console.info('context.declarations', context.declarations);
 		console.info('context.bytes', context.bytes);
@@ -544,15 +544,15 @@ function maybeDebugFilterWinningInlineStyles(context, timestamp, pass) {
 	// [PASS] iteration count and bytecount change for each pass.
 	if (pass) {
 		console.info('filterWinningInlineStyles', 'pass #' + pass);
-		console.info('context.delta', context.delta);
 	} else {
 		console.info('filterWinningInlineStyles');
+		console.info('runtime(ms)', roundTo3dp(performance.now() - timestamp));
 	}
 
 	// [OUTPUT] declaration count, bytecount and runtime (milliseconds).
 	console.info('context.declarations', context.declarations);
 	console.info('context.bytes', context.bytes);
-	console.info('runtime(ms)', roundTo3dp(performance.now() - timestamp));
+	console.info('context.delta', context.delta);
 }
 
 /**
