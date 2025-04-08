@@ -52,7 +52,6 @@ const ascentStoppers = new Set([
 ]);
 
 const roundTo3dp = n => Math.round(n * 1000) / 1000;
-const DEFAULT_ANIMATION_DURATION = '0s';
 
 /**
  * Filter inline style declarations for a DOM element tree by computed effect.
@@ -682,8 +681,8 @@ function freezeStyleAnimations(styles) {
 	let isDynamicElement = false;
 
 	const animations = {
-		'animation-duration': DEFAULT_ANIMATION_DURATION,
-		'transition-duration': DEFAULT_ANIMATION_DURATION
+		'animation-duration': null,
+		'transition-duration': null
 	};
 	for (const name in animations) {
 		if (!Object.prototype.hasOwnProperty.call(animations, name)) {
@@ -696,7 +695,8 @@ function freezeStyleAnimations(styles) {
 			continue;
 		}
 
-		if (value === DEFAULT_ANIMATION_DURATION) {
+		// these come from https://developer.mozilla.org/en-US/docs/Web/CSS/animation-duration#auto
+		if (['auto', '0s'].includes(value)) {
 			styles.inline.removeProperty(name);
 		} else {
 			isDynamicElement = true;
