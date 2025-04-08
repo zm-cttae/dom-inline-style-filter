@@ -466,18 +466,22 @@ function multiPassFilter(context) {
 	context.pyramid.forEach(stripBlockComments);
 	context.root.querySelectorAll('style').forEach(filterWinningMediaQueries);
 
-	tick = maybeDebugFilterAuthorInlineStyles(context);
+	if (context.options.debug) {
+		tick = debugFilterAuthorInlineStyles(context);
+	}
 
 	// If there are >~64 base2 declarations, we need to filter the inline styles in a separate pass.
 	if (Math.round(Math.log2(context.declarations / context.pyramid.length)) >= 6) {
 		context.pyramid.forEach(filterAuthorInlineStyles.bind(null, context));
 
-		maybeDebugFilterAuthorInlineStyles(context, tick);
+		if (context.options.debug) {
+			debugFilterAuthorInlineStyles(context, tick);
+		}
 	}
 
 	// Filter the inline styles again with multiple exploratory passes of DOM style computation.
 	if (context.options.debug) {
-		tick = maybeDebugFilterWinningInlineStyles(context, null, pass);
+		tick = debugFilterWinningInlineStyles(context, null, pass);
 	}
 	while (context.delta !== 0) {
 		context.delta = 0;
@@ -485,10 +489,12 @@ function multiPassFilter(context) {
 
 		if (context.options.debug) {
 			pass += 1;
-			maybeDebugFilterWinningInlineStyles(context, null, pass);
+			debugFilterWinningInlineStyles(context, null, pass);
 		}
 	}
-	maybeDebugFilterWinningInlineStyles(context, tick);
+	if (context.options.debug) {
+		debugFilterWinningInlineStyles(context, tick);
+	}
 
 	return context;
 }
@@ -499,11 +505,7 @@ function multiPassFilter(context) {
  * @param {number} [timestamp] Optional timestamp for performance measurement.
  * @return {number|void} Timestamp for the function execution start.
  */
-function maybeDebugFilterAuthorInlineStyles(context, timestamp) {
-	if (!context.options.debug) {
-		return;
-	}
-
+function debugFilterAuthorInlineStyles(context, timestamp) {
 	// [INPUT] data for the default style filter before 1st pass.
 	if (!timestamp) {
 		console.info('filterAuthorInlineStyles');
@@ -527,11 +529,7 @@ function maybeDebugFilterAuthorInlineStyles(context, timestamp) {
  * @param {number} [pass] Optional pass count for logging.
  * @return {number|void} Timestamp for the function execution start.
  */
-function maybeDebugFilterWinningInlineStyles(context, timestamp, pass) {
-	if (!context.options.debug) {
-		return;
-	}
-
+function debugFilterWinningInlineStyles(context, timestamp, pass) {
 	// [INPUT] data for the inline style filter before 1st pass.
 	if (pass === 0) {
 		console.info('filterWinningInlineStyles');
