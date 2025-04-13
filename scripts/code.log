@@ -1,0 +1,28 @@
+VM14:7 filterAuthorInlineStyles
+VM14:7 context.pyramid.length 405
+VM14:7 context.declarations 154328
+VM14:7 context.bytes 2528927
+VM14:7 filterAuthorInlineStyles
+VM14:7 context.declarations 17551
+VM14:7 context.bytes 429160
+VM14:7 runtime(ms) 4170
+VM14:7 filterWinningInlineStyles
+VM14:7 context.declarations 17551
+VM14:7 context.bytes 429160
+VM14:7 filterWinningInlineStyles pass #1
+VM14:7 context.declarations 8621
+VM14:7 context.bytes 130354
+VM14:7 context.delta 298806
+VM14:7 filterWinningInlineStyles pass #2
+VM14:7 context.declarations 7637
+VM14:7 context.bytes 89934
+VM14:7 context.delta 40420
+VM14:7 filterWinningInlineStyles pass #3
+VM14:7 context.declarations 7637
+VM14:7 context.bytes 89934
+VM14:7 context.delta 0
+VM14:7 filterWinningInlineStyles
+VM14:7 runtime(ms) 5445.2
+VM14:7 context.declarations 7637
+VM14:7 context.bytes 89934
+VM14:7 context.delta 0
