@@ -8,7 +8,7 @@
 
 - As web developers, we would like elements that ship only with inline styling to be light so that they can be included in NPM packages.
 - A main use case of this is SVG screenshots of HTML elements.
-- Even after a filter algorithm to [filter out user agent styling when inlining the style](https://github.com/1904labs/dom-to-image-more/issues/70), there is some way to go with data size.
+- Even after a filter algorithm to [filter out user agent styling when inlining the style][css-author-style-filter], there is some way to go with data size.
 
 ## Usage
 
@@ -28,7 +28,7 @@ Synchronous version. Returns `node` when the styling compression is completed.
 
     CSS inheritance is computed on the DOM tree via preorder traversal and is additive-cumulative (increases styling data).
 	
-	For the filter op which is subtractive, we want to traverse the tree in the opposite direction.
+	For the filter op which is subtractive, we want to traverse the tree in the opposite direction to avoid more recomputation.
     
     The algorithm sorts elements in the `node` tree by descending node depth. (This is known as reverse level order traversal.)
 
@@ -46,9 +46,33 @@ Synchronous version. Returns `node` when the styling compression is completed.
 
 ## Performance
 
-The underlying algorithm was determined to be a high-pass multi-pass - $N \approx 4$ - deterministic compression in two modes.
+### `filterAuthorInlineStyles`
 
-The data was collected from manual testing on the output of the `domtoimage.toSvg` function in the `dom-to-image-more` NPM package.
+The [`filterAuthorInlineStyles` algorithm][css-author-style-filter] was proven to be a single-pass deterministic compression.
+
+Data was collected from manual testing on the output of the `domtoimage.toSvg` function in the `dom-to-image` NPM package.
+
+### Large file inputs
+
+$O(N)$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
+
+| Wikipedia article demo    | Value                                  |
+| :------------------------ | :------------------------------------- |
+| Number of nodes           | 5558 nodes                             |
+| Initial declaration count | 2107482 (377.54 declarations / node)   |
+| Pre-compression bytes     | 33.79mb                                |
+| Reductions                | 27901890                               |
+| Processing time           | 7921.5ms (1.85 ms/node)                |
+| Total reduction           | 27.90mb                                |
+| Output declaration count  | 263099 (47.13 / node)                  |
+| Post-compression bytes    | 5.89mb                                 |
+| Compression ratio         | `5.74                                ` |
+
+### `filterWinningInlineStyles`
+
+The `filterWinningInlineStyles` algorithm was proven to be a high-pass multi-pass - $N \approx 4$ - deterministic compression in two modes.
+
+Data was collected from manual testing on the output of the `domtoimage.toSvg` function in the `dom-to-image-more` NPM package.
 
 ### Large file inputs
 
@@ -57,16 +81,16 @@ $O(log(N))$ growth for inputs at large filesizes $|F| >> 1e6 \text{ bytes}$.
 | Wikipedia article demo    | Value                                  |
 | :------------------------ | :------------------------------------- |
 | Number of nodes           | 5558 nodes                             |
-| Initial declaration count | 177818 (31.9 declarations / node)      |
-| Pre-compression bytes     | 3.63mb                                 |
-| Reductions                | [3058654, 98781, 16774, 0]             |
-| Processing time           | 10316.5ms (1.86 ms/node)               |
-| Total reduction           | 3.17mb                                 |
-| Output declaration count  | 33643 (6.05 / node)                    |
-| Post-compression bytes    | 709.4kb                                |
-| Compression quotients     | [0.9698, 0.9991, 0.9999, 1]            |
-| Compression ratio         | `5.117                               ` |
-| Decay formula             | $1-exp(-7 / 2 \cdot N)$                |
+| Initial declaration count | 186985 (33.65 declarations / node)     |
+| Pre-compression bytes     | 3.88mb                                 |
+| Reductions                | [2970178, 95584, 16774, 0]             |
+| Processing time           | 7921.5ms (1.43 ms/node)                |
+| Total reduction           | 3.09mb                                 |
+| Output declaration count  | 83512 (15.03 / node)                   |
+| Post-compression bytes    | 793.7kb                                |
+| Compression quotients     | [0.5379, 0.8891, 0.9800, 1]            |
+| Compression ratio         | `4.88                                ` |
+| Decay formula             | $1-exp(-33 / 17 \cdot N)$              |
 
 ### Graph
 
@@ -79,15 +103,18 @@ $O(c \cdot N), \space c \space \approx \space 4$ growth for inputs at small file
 | Code screenshot demo      | Value                                  |
 | :------------------------ | :------------------------------------- |
 | Number of nodes           | 420 nodes                              |
-| Initial declaration count | 14933 (35.5 declarations / node)       |
-| Pre-compression bytes     | 372430b                                |
-| Reductions                | [275482, 40312, 0]                     |
-| Processing time           | 604ms (1.6 ms / node)                  |
-| Total reduction           | 315794b                                |
-| Post-compression bytes    | 56636b                                 |
-| Output declaration count  | 2443 (5.82 / node)                     |
-| Compression quotients     | [0.872, 0.999, 1]                      |
-| Total quotient (compound) | `6.575                               ` |
-| Decay formula             | $1-exp(-9 / 4 \cdot N)$                |
+| Initial declaration count | 17551 (41.79 declarations / node)      |
+| Pre-compression bytes     | 429160b                                |
+| Reductions                | [298806, 40420, 0]                     |
+| Processing time           | 5445.2ms (12.96 ms / node)             |
+| Total reduction           | 339226b                                |
+| Post-compression bytes    | 89934b                                 |
+| Output declaration count  | 7637 (18.18 / node)                    |
+| Compression quotients     | [0.696, 0.931, 1]                      |
+| Total quotient (compound) | `4.77                                ` |
+| Decay formula             | $1-exp(-23 / 11 \cdot N)$              |
 
 <img src="./assets/236925730-e880fabe-426f-491e-a95f-989536c9e3bc.png" width="539px" />
+
+<!-- `dom-inline-style-filter` -->
+[css-author-style-filter]: https://github.com/1904labs/dom-to-image-more/pull/71

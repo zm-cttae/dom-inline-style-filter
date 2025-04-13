@@ -1,6 +1,6 @@
 {
   "name": "dom-inline-style-filter",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "High-pass data compression filter for inline styling (embedded CSS) by computed effect.",
   "main": "./dist/index.min.js",
   "scripts": {
@@ -30,5 +30,13 @@
     "rollup": "^3.21.5",
     "rollup-plugin-commonjs": "^10.1.0",
     "terser": "^5.17.1"
+  },
+  "peerDependencies": {
+    "dom-to-image-more": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "dom-to-image-more": {
+      "optional": true
+    }
   }
 }
