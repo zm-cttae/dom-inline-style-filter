@@ -5,8 +5,14 @@ const cssDeclarationColonRegex = /;\s*(?=-*\w+(?:-\w+)*:\s*(?:[^"']*["'][^"']*["
 let removeDefaultStylesTimeoutId = null;
 let tagNameDefaultStyles = {};
 
+/**
+ * Set of HTML elements that represent block-level contexts.
+ * These stop the ascent of the DOM tree for default style computation.
+ * @type {Set<string>}
+ * @constant
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements
+ */
 const ascentStoppers = new Set([
-	// these come from https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements
 	'ADDRESS',
 	'ARTICLE',
 	'ASIDE',
@@ -51,8 +57,6 @@ const ascentStoppers = new Set([
 	'HTML',
 ]);
 
-const roundTo3dp = n => Math.round(n * 1000) / 1000;
-
 /**
  * Filter inline style declarations for a DOM element tree by computed effect.
  * Estimated inline style reduction at 80% to 90%.
@@ -64,7 +68,7 @@ const roundTo3dp = n => Math.round(n * 1000) / 1000;
  *      Options for the filter.
  * @param {boolean} [options.debug=false]
  *      Enable debug logging.
- * @returns {Promise<HTMLElement>}
+ * @return {Promise<HTMLElement>}
  *      A promise that resolves to the `clone` reference, now stripped of inline styling
  *      declarations without a computed effect.
  * @exports dominlinestylefilter
@@ -81,9 +85,11 @@ const dominlinestylefilter = function(clone, options) {
 /**
  * Synchronous version of {@link onclone}.
  * @param {HTMLElement} clone HTML clone.
- * @param {Record<string, boolean>} [options] Filter options.
+ * @param {Record<string, boolean>} [options] Options for the filter.
  * @param {boolean} [options.debug=false] Enable debug logging.
- * @returns {HTMLElement}
+ * @return {HTMLElement}
+ *      The `clone` reference, now stripped of inline styling
+ *      declarations without a computed effect.
  */
 dominlinestylefilter.sync = function(clone, options) {
 	const context = new Context(clone, options || {});
@@ -103,8 +109,10 @@ dominlinestylefilter.sync = function(clone, options) {
 module.exports = dominlinestylefilter;
 
 /**
- * Process context to propogate in promise chain.
+ * Process context to propagate in promise chain.
+ *
  * @param {HTMLElement} clone Node with all computed styles dumped in the inline styling.
+ * @param {Record<string, boolean>} options Options for the filter.
  * @constructor
  */
 function Context(clone, options) {
@@ -147,9 +155,10 @@ function Context(clone, options) {
 }
 
 /**
- * Styling data for a HTML element.
- * @param {Context} context
- * @param {HTMLElement} element Element in the DOM tree of clone.
+ * Styling data for an HTML element.
+ *
+ * @param {Context} context Context of the process.
+ * @param {HTMLElement} element Element in the DOM tree of `clone`.
  * @constructor
  */
 function Styles(context, element) {
@@ -170,7 +179,9 @@ function Styles(context, element) {
 
 /**
  * Synchronously execute a promise executor function.
- * @param {Executor} executor
+ *
+ * @param {Executor} executor Promise executor function.
+ * @return {any} Result of the executor function.
  */
 function execute(executor) {
 	let result;
@@ -190,7 +201,7 @@ function execute(executor) {
  * To make sure we match the styling, the iframe uses the original viewport
  * dimensions and document character set.
  *
- * @returns {HTMLIFrameElement} {@link Context.sandbox}.
+ * @return {HTMLIFrameElement} {@link Context.sandbox}.
  */
 function createSandbox() {
 	const iframe = globalThis.document.createElementNS('http://www.w3.org/1999/xhtml', 'iframe');
@@ -267,8 +278,10 @@ function createSandbox() {
 /**
  * Returns the default styles for a given element in the DOM tree.
  * If the styles have already been computed, it returns the cached value.
- * @param {Context} context
- * @param {HTMLElement} sourceElement
+ *
+ * @param {Context} context Context of the process.
+ * @param {HTMLElement} sourceElement Source element to get default styles for.
+ * @return {CSSStyleDeclaration} Default styles for the element.
  */
 function getDefaultStyle(context, sourceElement) {
 	const tagHierarchy = computeTagHierarchy(sourceElement);
@@ -365,8 +378,8 @@ function getDefaultStyle(context, sourceElement) {
 /**
  * Generates a new sandbox DOM for the process context and appends the clone to it.
  *
- * @param {Context} context
- * @returns {Executor} Promise executor function.
+ * @param {Context} context Context of the process.
+ * @return {Executor} Promise executor function.
  */
 function stageCloneWith(context) {
 	return (resolve, reject) => {
@@ -382,7 +395,9 @@ function stageCloneWith(context) {
 
 /**
  * Generates a list of elements in the DOM tree of `context.clone`, sorted by descending position (source order).
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
+ * @return {Context} Updated context with the tree collected.
  */
 function collectTree(context) {
 	const walker = context.self.document.createTreeWalker(context.root, globalThis.NodeFilter.SHOW_ELEMENT);
@@ -412,7 +427,9 @@ function collectTree(context) {
  * Sorts elements into ascending DOM tree ("pyramid") like the native CSSOM, because CSS inheritance is bottom-up.
  * Elements are sorted by ascending order of succession from the root then descending source order.
  * Without the sort algorithm, explicit style values matching `inherit` are removed.
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
+ * @return {Context} Updated context with the pyramid sorted.
  */
 function sortAscending(context) {
 	for (let depth = context.cutoff; depth > 0; depth--) {
@@ -429,7 +446,10 @@ function sortAscending(context) {
 /**
  * Get the depth of an element in the DOM tree.
  * The depth is the number of ancestors in the tree, starting from 1 for the root element.
- * @param {HTMLElement} element
+ *
+ * @param {HTMLElement} element Element to calculate depth for.
+ * @param {number} i Index of the element in the tree.
+ * @return {number} Depth of the element.
  */
 function getDepth(element, i) {
 	/** @type Context */
@@ -458,7 +478,9 @@ function getDepth(element, i) {
 
 /**
  * Multi-pass inline CSS data optimization.
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
+ * @return {Context} Updated context after compression.
  */
 function multiPassFilter(context) {
 	let tick;
@@ -500,8 +522,17 @@ function multiPassFilter(context) {
 }
 
 /**
+ * Rounds a number to 3 decimal places.
+ *
+ * @param {number} n Number to round.
+ * @return {number} Rounded number.
+ */
+const roundTo3dp = n => Math.round(n * 1000) / 1000;
+
+/**
  * Abstracted debug logging for filterAuthorInlineStyles.
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
  * @param {number} [timestamp] Optional timestamp for performance measurement.
  * @return {number|void} Timestamp for the function execution start.
  */
@@ -524,7 +555,8 @@ function debugFilterAuthorInlineStyles(context, timestamp) {
 
 /**
  * Abstracted debug logging for filterWinningInlineStyles.
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
  * @param {number} [timestamp] Optional timestamp for performance measurement.
  * @param {number} [pass] Optional pass count for logging.
  * @return {number|void} Timestamp for the function execution start.
@@ -554,6 +586,8 @@ function debugFilterWinningInlineStyles(context, timestamp, pass) {
 
 /**
  * Strip block comments from inline style.
+ * @param {HTMLElement} element Element to strip block comments from.
+ * @return {void}
  */
 function stripBlockComments(element) {
 	const value = element.getAttribute('style');
@@ -567,6 +601,8 @@ function stripBlockComments(element) {
 
 /**
  * Strip inactive media queries from embedded stylesheets.
+ * @param {HTMLStyleElement} style Style element to filter media queries from.
+ * @return {void}
  */
 function filterWinningMediaQueries(style) {
 	if (style.media && !globalThis.matchMedia(style.media).matches) {
@@ -594,6 +630,10 @@ function filterWinningMediaQueries(style) {
 /**
  * Cache-optimized filter to reduce an inline style to author stylesheet declarations (400ns / element).
  * Checks if the declaration matches the default and parent computed value and if so, remove.
+ *
+ * @param {Context} context Context of the process.
+ * @param {HTMLElement} element Filtrate element in the DOM tree of `clone`.
+ * @return {void}
  */
 function filterAuthorInlineStyles(context, element) {
 	if (!element.attributes.style) {
@@ -623,16 +663,15 @@ function filterAuthorInlineStyles(context, element) {
 
 	const finalBytes = styles.inline.cssText.length;
 	context.bytes += finalBytes;
-
-	return element;
 }
 
 /**
  * Exploratory filter to reduce an inline style to winning declarations (~1.4ms / element).
  * Destructively remove declarations and check if there is a computed value change. If so, restore.
  *
- * @param {Context} context
- * @param {HTMLElement} element Element in the DOM tree of `clone`.
+ * @param {Context} context Context of the process.
+ * @param {HTMLElement} element Filtrate element in the DOM tree of `clone`.
+ * @return {void}
  */
 function filterWinningInlineStyles(context, element) {
 	if (!element.attributes.style) {
@@ -672,8 +711,9 @@ function filterWinningInlineStyles(context, element) {
  * Hack to freeze CSS animations and transitions and prevent dynamic property changes.
  * This keeps CSS computed values constant and prevent false positives in the declaration filter.
  *
- * @param {Styles} styles
- * @return {Animations|void}
+ * @param {Styles} styles Styles object for the element.
+ * @return {Animations|void} Original animation durations where applicable.
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/animation-duration#auto
  */
 function freezeStyleAnimations(styles) {
 	let isDynamicElement = false;
@@ -693,7 +733,6 @@ function freezeStyleAnimations(styles) {
 			continue;
 		}
 
-		// these come from https://developer.mozilla.org/en-US/docs/Web/CSS/animation-duration#auto
 		if (['auto', '0s'].includes(value)) {
 			styles.inline.removeProperty(name);
 		} else {
@@ -709,9 +748,9 @@ function freezeStyleAnimations(styles) {
 /**
  * Restore CSS animations and transitions to their original durations.
  *
- * @param {Styles} styles
- * @param {Animations|undefined} animations
- * @returns {void}
+ * @param {Styles} styles Styles object for the element.
+ * @param {Animations|undefined} animations Original animation durations.
+ * @return {void}
  */
 function unfreezeStyleAnimations(styles, animations) {
 	if (!animations) {
@@ -728,7 +767,7 @@ function unfreezeStyleAnimations(styles, animations) {
  * Tokenize inline styling declarations.
  *
  * @param {string} cssText Inline style attribute value for a HTML element.
- * @returns {string[]} List of inline styling declarations.
+ * @return {string[]} List of inline styling declarations.
  */
 function tokenizeCssTextDeclarations(cssText) {
 	return cssText.replace(/;\s*$/, '').split(cssDeclarationColonRegex);
@@ -738,7 +777,7 @@ function tokenizeCssTextDeclarations(cssText) {
  * Get property name from CSS declaration.
  *
  * @param {string} declaration Inline style declaration for a HTML element.
- * @returns {string} The CSS property for `declaration`.
+ * @return {string} CSS property for  `declaration`.
  */
 function getCssTextProperty(declaration) {
 	return declaration.slice(0, declaration.indexOf(':'));
@@ -750,7 +789,7 @@ function getCssTextProperty(declaration) {
  *
  * @param {string} a First CSS property name.
  * @param {string} b Second CSS property name.
- * @returns {number} See {@link Array.prototype.sort}.
+ * @return {number} Sort order - see {@link Array.prototype.sort}.
  */
 function compareHyphenCount(a, b) {
 	const isCustom = (name) => /^--\b/.test(name);
@@ -776,8 +815,11 @@ function compareHyphenCount(a, b) {
 /**
  * Splices default CSS style declarations from the inline style attribute.
  *
- * @param {Styles} styles
+ * @param {Styles} styles Styles object for the element.
+ * @param {CSSStyleDeclaration} parentComputedStyle Computed styles of the parent element.
+ * @param {CSSStyleDeclaration} defaultStyle Default styles for the element.
  * @param {string} name Name of the CSS property explicitly declared in the inline styling.
+ * @return {void}
  */
 function spliceAuthorCssStyleDeclaration(styles, parentComputedStyle, defaultStyle, name) {
 	if (name === 'width' || name === 'height') { // cross-browser portability
@@ -805,8 +847,9 @@ function spliceAuthorCssStyleDeclaration(styles, parentComputedStyle, defaultSty
  * Filters style declarations in place to keep the algorithm deterministic.
  * The styles dumped by `filterAuthorInlineStyles` are position-dependent.
  *
- * @param {Styles} styles
+ * @param {Styles} styles Styles object for the element.
  * @param {string} name Name of the CSS property explicitly declared in the inline styling.
+ * @return {void}
  */
 function spliceWinningCssTextDeclaration(styles, name) {
 	if (name === 'width' || name === 'height') { // cross-browser portability
@@ -833,7 +876,9 @@ function spliceWinningCssTextDeclaration(styles, name) {
 
 /**
  * Detaches clone element from the sandbox, then deletes the sandbox <iframe>.
- * @param {Context} context
+ *
+ * @param {Context} context Context of the process.
+ * @return {HTMLElement} Root element of the clone.
  */
 function unstageClone(context) {
 	if (context.parent) {
